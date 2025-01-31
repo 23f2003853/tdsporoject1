@@ -1,37 +1,30 @@
 import json
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 
-from http.server import BaseHTTPRequestHandler
+app = Flask(__name__)
+CORS(app)  # Enable CORS to allow GET requests from any origin
 
-class handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type','application/json')
-        self.send_header("Access-Control-Allow-Origin","*")        
-        self.end_headers()
-        self.wfile.write(json.dumps({"message": "Hello!"}).encode('utf-8'))
-        return
-        
-# Load student data from the JSON file
-def load_student_data():
-    with open('..\q-vercel-python.json', 'r') as file:
-        return json.load(file)
+# Load the data from q-vercel-python.json
+with open('q-vercel-python.json') as f:
+    data = json.load(f)
 
-def handler(request):
-    # Load the student data
-    students_data = load_student_data()
+# Create a dictionary for faster lookups
+data_dict = {entry['name']: entry['marks'] for entry in data}
 
-    # Get query parameters from the request
-    query_params = request.query_params
-    names = query_params.getlist('name')  # Get list of names from query
-
-    # Find the marks for the requested names
-    result = []
-    for name in names:
-        student = next((s for s in students_data if s['name'] == name), None)
-        if student:
-            result.append({"name": name, "marks": student["marks"]})
-        else:
-            result.append({"name": name, "marks": "Not Found"})
+@app.route('/api', methods=['GET'])
+def get_marks():
+    names = request.args.getlist('name')  # Retrieve 'name' query parameters
+    marks = []
     
-    # Return the result as a JSON response
-    return json.dumps(result)
+    for name in names:
+        # Check if the name exists in the data_dict
+        if name in data_dict:
+            marks.append(data_dict[name])
+        else:
+            marks.append(None)  # Return None for unknown names
+
+    return jsonify({'marks': marks})
+
+if __name__ == '__main__':
+    app.run(debug=True)
